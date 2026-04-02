@@ -1,0 +1,53 @@
+name: Tag from Commit
+
+on:
+  repository_dispatch:
+    types: [trigger-release]
+    
+permissions:
+  contents: write
+
+jobs:
+  release:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # Needed so we can create tags
+          ref: ${{ github.event.client_payload.branch }}
+
+      - name: Generate tag from commit SHA
+        id: tagger
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          TAG="build-${SHORT_SHA}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Write tag to file1.txt
+        run: |
+          echo "${{ steps.tagger.outputs.tag }}" > file1.txt
+
+      - name: Commit updated file
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add file1.txt
+          git commit -m "Update file1.txt with tag ${{ steps.tagger.outputs.tag }}" || echo "No changes to commit"
+
+      # - name: Authenticate with PAT_CORRECT
+      #   run: |
+      #     git remote set-url origin https://x-access-token:${{ secrets.PAT_CORRECT }}@github.com/${{ github.repository }}.git
+
+      - name: Push commit
+        run: |
+          git push origin ${{ github.event.client_payload.branch }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Git tag
+        run: |
+          git tag ${{ steps.tagger.outputs.tag }}
+          git push origin ${{ steps.tagger.outputs.tag }}
