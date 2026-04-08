@@ -9,6 +9,7 @@ permissions:
 
 jobs:
   release:
+    name: repo3-deployment-(${{ github.event.client_payload.version }})
 
     runs-on: ubuntu-latest
 
